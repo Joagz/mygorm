@@ -44,3 +44,5 @@ func (m model) Print() {
 func (model) FindAll() ([]any, error) {
 	panic("no sql engine for model.FindAll")
 }
+
+

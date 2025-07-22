@@ -16,9 +16,12 @@ const (
 
 type Model interface {
 	FindAll() ([]any, error)
-	// FindById(int) (any, error)
-	// FindBy(...any) ([]any, error)
-	// NumRows() int
+	FindById(int) (any, error)
+	FindBy(...any) ([]any, error)
+	NumRows() int
+	Insert(any) error 
+	UpdateById(any, int) error
+	UpdateBy(any, ...any) error 
 
 	Print()
 	GetReference() map[string][]string
