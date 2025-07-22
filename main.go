@@ -22,11 +22,18 @@ type OtherTable struct {
 	Column2 string     `col:"other_col_2"`
 }
 
+/* convenient implementation */
+func TableModel() (model.Model, error) {
+	return model.Of(Table{}, "table")
+}
+
 func main() {
-	m, err := model.Of(Table{}, "table")
+	m, err := TableModel()
 	if err != nil {
 		fmt.Println(err.Error())
 		return 
 	}
-	m.Print()
+	m.Print() // print model
+	rows, err := m.FindAll() // example usage
+	fmt.Printf("rows: %v\n", rows)
 }
