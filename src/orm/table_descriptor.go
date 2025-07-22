@@ -1,10 +1,11 @@
-package model
+package orm
 
 import (
 	"fmt"
 )
 
 type model struct {
+	config      datasourceConfig
 	Table       string
 	Columns     []string
 	PrimaryKey  string
@@ -13,15 +14,14 @@ type model struct {
 }
 
 func (m model) GetReference() map[string][]string {
-	ref := make(map[string][]string)
-	ref[m.Table] = m.Columns
-	return ref
+	return m.References
 }
 
 func (m model) GetColumns() []string {
 	return m.Columns
 }
 
+// This function is horrible and beautiful at the same time
 func (m model) Print() {
 	fmt.Printf("name: %s\n", m.Table)
 	fmt.Printf("pk: %s\n", m.PrimaryKey)
@@ -40,12 +40,4 @@ func (m model) Print() {
 		fmt.Println("")
 	}
 }
-
-func (model) FindAll() (resultSet []any, err error)
-func (model) FindById(id int) (result any, err error)
-func (model) FindBy(params ...any) (resultSet []any, err error)
-func (model) NumRows() (n int)
-func (model) Insert(data any) error 
-func (model) UpdateById(data any, id int) error
-func (model) UpdateBy(data any, params ...any) error 
 

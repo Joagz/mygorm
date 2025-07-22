@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"mygorm/src/orm"
 )
 
 type Table struct {
@@ -21,18 +21,22 @@ type OtherTable struct {
 	Column2 string     `col:"other_col_2"`
 }
 
-/* convenient implementation */
-func TableModel() (model.Model, error) {
-	return model.Of(Table{}, "table")
+func Connect() orm.Connector {
+	conn := orm.NewConnector("mysql", "root", "123456", "db_name", "localhost:3306")
+
+	return conn
 }
 
 func main() {
-	m, err := TableModel()
+	conn := Connect()
+	
+	model, err := conn.ModelOf(Table{}, "table")
+
 	if err != nil {
-		fmt.Println(err.Error())
-		return 
+		panic("error making model")
 	}
-	m.Print() // print model
-	rows, err := m.FindAll() // example usage
-	fmt.Printf("rows: %v\n", rows)
+
+	model.Print()
+
+
 }

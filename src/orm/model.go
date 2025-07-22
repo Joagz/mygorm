@@ -1,4 +1,4 @@
-package model
+package orm 
 
 import (
 	"fmt"
@@ -9,27 +9,33 @@ import (
 )
 
 const (
-	CommaSeparatedRegex = `^(\s*[\w\s-]+\s*)(,\s*[\w\s-]+\s*)*$` 
+	CommaSeparatedRegex    = `^(\s*[\w\s-]+\s*)(,\s*[\w\s-]+\s*)*$`
 	PrimaryKeyPropertyName = "primary-key"
 	ForeignKeyPropertyName = "foreign-key"
 )
 
 type Model interface {
+	/*
+	 * SQL Crud Methods
+	 */
 	FindAll() ([]any, error)
 	FindById(int) (any, error)
 	FindBy(...any) ([]any, error)
 	NumRows() int
-	Insert(any) error 
+	Insert(any) error
 	UpdateById(any, int) error
-	UpdateBy(any, ...any) error 
-
+	UpdateBy(any, ...any) error
+	
+	/*
+	 * Other methods
+	 */
 	Print()
 	GetReference() map[string][]string
 	GetColumns() []string
 }
-
-func Of(d any, tablename string) (Model, error) {
-	var t reflect.Type 
+// We have to inject some configuration here
+func (c connector) ModelOf(d any, tablename string) (Model, error) {
+	var t reflect.Type
 	if k, ok := d.(reflect.Type); !ok {
 		t = reflect.TypeOf(d)
 	} else {
@@ -38,10 +44,10 @@ func Of(d any, tablename string) (Model, error) {
 
 	expr, err := regexp.Compile(CommaSeparatedRegex)
 	if err != nil {
-		panic("model.Of: INVALID CommaSeparatedRegex")	
+		panic("model.Of: INVALID CommaSeparatedRegex")
 	}
 
-	var m model 
+	var m model
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -51,10 +57,10 @@ func Of(d any, tablename string) (Model, error) {
 		if props := field.Tag.Get("props"); props != "" {
 			ok := expr.MatchString(props)
 			if !ok {
-				return nil, fmt.Errorf("regular expression checking failed for %s", props)	
+				return nil, fmt.Errorf("regular expression checking failed for %s", props)
 			}
 
-			// treat as comma-separated string 
+			// treat as comma-separated string
 			properties := strings.Split(props, ",")
 			if slices.Contains(properties, PrimaryKeyPropertyName) {
 				m.PrimaryKey = col
@@ -62,17 +68,17 @@ func Of(d any, tablename string) (Model, error) {
 
 			if slices.Contains(properties, ForeignKeyPropertyName) {
 				ref := field.Tag.Get("ref")
-				if ref == ""{
-					return nil, fmt.Errorf("please set `ref` for column %s", col)	
+				if ref == "" {
+					return nil, fmt.Errorf("please set `ref` for column %s", col)
 				}
 
 				m.ForeignKeys = append(m.ForeignKeys, col)
 				foreign := field.Type
-				fmodel, err := Of(foreign, ref)	
+				fmodel, err := c.ModelOf(foreign, ref)
 				if err != nil {
 					return nil, err
 				}
-				if(m.References == nil) {
+				if m.References == nil {
 					m.References = make(map[string][]string)
 				}
 				m.References[ref] = fmodel.GetColumns()
