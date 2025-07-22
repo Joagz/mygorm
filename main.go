@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"gin/orm/src/model"
 )
 
 type Table struct {

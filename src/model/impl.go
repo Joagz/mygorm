@@ -41,8 +41,11 @@ func (m model) Print() {
 	}
 }
 
-func (model) FindAll() ([]any, error) {
-	panic("no sql engine for model.FindAll")
-}
-
+func (model) FindAll() (resultSet []any, err error)
+func (model) FindById(id int) (result any, err error)
+func (model) FindBy(params ...any) (resultSet []any, err error)
+func (model) NumRows() (n int)
+func (model) Insert(data any) error 
+func (model) UpdateById(data any, id int) error
+func (model) UpdateBy(data any, params ...any) error 
 
