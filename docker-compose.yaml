@@ -1,0 +1,12 @@
+services:
+  database:
+    image: mysql:latest
+    container_name: orm_test_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: db_name
+    ports:
+      - 3306:3306
+    volumes:
+      - ./mysqldata:/var/lib/mysql

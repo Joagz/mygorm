@@ -1,14 +1,25 @@
 package orm
 
-import "fmt"
+import (
+	"database/sql"
+	"fmt"
+
+	_ "github.com/go-sql-driver/mysql"
+)
 
 type Connector interface {
-	init() error
+	Open() error
+	Close()
 	ModelOf(any, string) (Model, error)
 }
 
 type connector struct {
 	datasourceConfig
+}
+
+type mySqlConnector struct {
+	connector
+	*sql.DB
 }
 
 func NewConnector(engine, username, password, dbname, hostname string) Connector {
@@ -24,20 +35,47 @@ func NewConnector(engine, username, password, dbname, hostname string) Connector
 		datasourceConfig: cfg,
 	}
 
+	switch engine {
+	case "mysql":
+		fmt.Printf("returning mySqlConnector\n")
+		return &mySqlConnector{
+			connector: conn,
+			DB:        nil,
+		}
+	}
+
 	return &conn
 }
 
-func (c connector) init() error {
-	switch c.Engine {
-	case "mysql":
-		initMySqlConnector(c)
-	default:
-		return fmt.Errorf("no connector provided for engine '%s'", c.Engine)
-	}
-
-	return nil
+func (c connector) Close() {
+	panic("please select a sql engine")
 }
 
-func initMySqlConnector(c connector) {
+func (c connector) Open() error {
+	panic("please select a sql engine")
+}
 
+func (c mySqlConnector) Close() {
+	if c.DB == nil {
+		panic("please use Open() before Close()")
+	}
+	err := c.DB.Close()
+	if err != nil {
+		fmt.Printf("Failed to close mySqlConnector: '%s'\n", err.Error())
+	}
+}
+
+func makeMySqlConnectionString(c mySqlConnector) string {
+	return fmt.Sprintf("%s:%s@tcp(%s)/%s?collation=utf8mb4_unicode_ci&parseTime=true", c.username, c.password, c.Hostname, c.Schema)
+}
+
+func (c *mySqlConnector) Open() error {
+	fmt.Println("mysql.Open() called") // Debug
+	db, err := sql.Open("mysql", makeMySqlConnectionString(*c))
+	if err != nil {
+		return err	
+	}
+
+	c.DB = db
+	return nil
 }

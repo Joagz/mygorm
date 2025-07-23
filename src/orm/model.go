@@ -88,5 +88,18 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 
 	m.Table = tablename
 
-	return &m, nil
+	switch c.Engine {
+	case "mysql":
+		return &mySqlModel{
+			model: m,
+			mySqlConnector: mySqlConnector{
+				connector: c,
+				DB:        nil},
+		}, nil
+	default:
+		panic("please select a valid engine")
+
+	}
+
+
 }
