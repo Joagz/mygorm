@@ -70,7 +70,6 @@ func makeMySqlConnectionString(c mySqlConnector) string {
 }
 
 func (c *mySqlConnector) Open() error {
-	fmt.Println("mysql.Open() called") // Debug
 	db, err := sql.Open("mysql", makeMySqlConnectionString(*c))
 	if err != nil {
 		return err	
