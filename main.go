@@ -55,17 +55,16 @@ func main() {
 
 	fmt.Printf("result: len() = %d\n", len(result))
 
-	for _, v := range result {
-		if arr, ok := v.([]interface{}); ok {
-			for i, item := range arr {
-				switch val := item.(type) {
-				case []byte:
-					fmt.Printf("[%d] string: %s\n", i, string(val))
-				default:
-					fmt.Printf("[%d] value: %v (type %T)\n", i, val, val)
-				}
-			}
-			fmt.Println("----")
+	for i, v := range result {
+		// we can map this into some struct
+		if arr, ok := v.([]any); ok {
+			fmt.Printf("row #%d", i)
+			fmt.Printf("\tid=%d\n", arr[0])
+			fmt.Printf("\tcol_1=%s\n", arr[1])
+			fmt.Printf("\tcol_2=%s\n", arr[2])
+			fmt.Printf("\tother_id=%d\n", arr[3])
+			fmt.Printf("\textra_id=%d\n", arr[4])
+			fmt.Println()
 		}
 	}
 
