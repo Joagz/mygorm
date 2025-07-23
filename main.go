@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"mygorm/src/orm"
+	"os"
+	"text/tabwriter"
 )
 
 type Table struct {
@@ -46,26 +48,29 @@ func main() {
 		fmt.Printf("error creating model: %s\n", err.Error())
 		return 
 	}
-	model.Print()
+	
 	result, err := model.FindAll()
 	if err != nil {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
 	}
 
-	fmt.Printf("result: len() = %d\n", len(result))
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	fmt.Fprintln(w, "Row\tID\tCol_1\tCol_2\tOther_ID\tExtra_ID")
 
 	for i, v := range result {
-		// we can map this into some struct
 		if arr, ok := v.([]any); ok {
-			fmt.Printf("row #%d", i)
-			fmt.Printf("\tid=%d\n", arr[0])
-			fmt.Printf("\tcol_1=%s\n", arr[1])
-			fmt.Printf("\tcol_2=%s\n", arr[2])
-			fmt.Printf("\tother_id=%d\n", arr[3])
-			fmt.Printf("\textra_id=%d\n", arr[4])
-			fmt.Println()
+			fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%d\t%d\n",
+				i,
+				arr[0],
+				arr[1],
+				arr[2],
+				arr[3],
+				arr[4],
+			)
 		}
 	}
 
+	w.Flush()
 }
