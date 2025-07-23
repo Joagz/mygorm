@@ -35,14 +35,6 @@ func NewConnector(engine, username, password, dbname, hostname string) Connector
 		datasourceConfig: cfg,
 	}
 
-	switch engine {
-	case "mysql":
-		return &mySqlConnector{
-			connector: conn,
-			DB:        nil,
-		}
-	}
-
 	return &conn
 }
 

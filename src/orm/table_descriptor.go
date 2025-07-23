@@ -13,10 +13,6 @@ type model struct {
 	References  map[string][]string
 }
 
-func (m model) GetReference() map[string][]string {
-	return m.References
-}
-
 func (m model) GetColumns() []string {
 	return m.Columns
 }

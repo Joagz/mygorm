@@ -2,6 +2,7 @@ package orm
 
 import (
 	"fmt"
+	"maps"
 )
 
 /*
@@ -29,9 +30,30 @@ func (m mySqlModel) FindAll() (resultSet []any, err error) {
 	if err != nil {
 		return nil, err 
 	}
+	defer m.Close()
 
-	cols := arrayToCommaSeparated(m.Columns)
-	selectStr := fmt.Sprintf("SELECT %s FROM %s", cols, m.Table)
+	cols := arrayToCommaSeparatedTable(m.Columns, m.Table)
+	joins := ""
+	columnRefLength := 0
+
+
+	if len(m.References) > 0 {
+		keys := maps.Keys(m.References)
+		i := 0
+		for k := range keys {
+			ref := m.References[k]
+			columnRefLength+=len(ref)
+			cols += "," + arrayToCommaSeparatedTable(ref, k)
+			joins += fmt.Sprintf("JOIN %s ON %s = %s ", k, m.ForeignKeys[i], fmt.Sprintf("%s.%s", k, ref[0]))
+			i++
+		}
+	}
+
+	fmt.Printf("columnRefLength: %d\n", columnRefLength)
+	selectStr := fmt.Sprintf("SELECT %s FROM %s %s %s", cols, m.Table, joins, "")
+	
+	fmt.Println(selectStr)
+
 	stmt, err := m.DB.Prepare(selectStr)	
 	if err != nil {
 		return nil, err
@@ -43,12 +65,13 @@ func (m mySqlModel) FindAll() (resultSet []any, err error) {
 		return nil, err
 	}
 
+	readLength := len(m.Columns) + columnRefLength
 	for rows.Next() {
 		/*
 		 * We use dest to store pointers to each rawResult entry
 		 */
-		rawResult := make([]any, len(m.Columns))
-		dest := make([]any, len(m.Columns))
+		rawResult := make([]any, readLength)
+		dest := make([]any, readLength)
 		for i := range rawResult {
 			dest[i] = &rawResult[i]
 		}

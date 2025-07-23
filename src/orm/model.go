@@ -30,7 +30,6 @@ type Model interface {
 	 * Other methods
 	 */
 	Print()
-	GetReference() map[string][]string
 	GetColumns() []string
 }
 // We have to inject some configuration here
@@ -49,10 +48,13 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 
 	var m model
 
+	var cols []string
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		col := field.Tag.Get("col")
-		m.Columns = append(m.Columns, col)
+
+		hasPk := false
+		hasFk := false 
 
 		if props := field.Tag.Get("props"); props != "" {
 			ok := expr.MatchString(props)
@@ -64,6 +66,9 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 			properties := strings.Split(props, ",")
 			if slices.Contains(properties, PrimaryKeyPropertyName) {
 				m.PrimaryKey = col
+				// always append pk first
+				hasPk = true
+
 			}
 
 			if slices.Contains(properties, ForeignKeyPropertyName) {
@@ -71,7 +76,6 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 				if ref == "" {
 					return nil, fmt.Errorf("please set `ref` for column %s", col)
 				}
-
 				m.ForeignKeys = append(m.ForeignKeys, col)
 				foreign := field.Type
 				fmodel, err := c.ModelOf(foreign, ref)
@@ -82,19 +86,29 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 					m.References = make(map[string][]string)
 				}
 				m.References[ref] = fmodel.GetColumns()
+				hasFk = true
 			}
+		}
+
+		if hasPk {
+			m.Columns = append(m.Columns, col)
+		} else if !hasFk {
+			cols = append(cols, col)
 		}
 	}
 
+	// manually copy the rest of the columns 
+	for _, v := range cols {
+		m.Columns = append(m.Columns, v)
+	}
+	
 	m.Table = tablename
 
 	switch c.Engine {
 	case "mysql":
 		return &mySqlModel{
 			model: m,
-			mySqlConnector: mySqlConnector{
-				connector: c,
-				DB:        nil},
+			mySqlConnector: mySqlConnector{connector: c, DB: nil}, 
 		}, nil
 	default:
 		panic("please select a valid engine")
