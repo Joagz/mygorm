@@ -37,7 +37,6 @@ func NewConnector(engine, username, password, dbname, hostname string) Connector
 
 	switch engine {
 	case "mysql":
-		fmt.Printf("returning mySqlConnector\n")
 		return &mySqlConnector{
 			connector: conn,
 			DB:        nil,
