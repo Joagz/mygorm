@@ -48,11 +48,11 @@ func (m mySqlModel) makeMySqlSelect() (result string, columnRefLength int) {
 
 	if len(m.References) > 0 {
 		keys := maps.Keys(m.References)
-		for k := range keys {
-			ref := m.References[keys[k]]
+		for i,k := range keys {
+			ref := m.References[k]
 			columnRefLength += len(ref)
-			cols += "," + arrayToCommaSeparatedTable(ref, keys[k])
-			joins += fmt.Sprintf("JOIN %s ON %s = %s ", keys[k], m.ForeignKeys[k], fmt.Sprintf("%s.%s", keys[k], ref[0]))
+			cols += "," + arrayToCommaSeparatedTable(ref, k)
+			joins += fmt.Sprintf("JOIN %s ON %s = %s ", k, m.ForeignKeys[i], fmt.Sprintf("%s.%s", k, ref[0]))
 		}
 	}
 	result = fmt.Sprintf("SELECT %s FROM %s %s", cols, m.Table, joins)
@@ -132,8 +132,8 @@ func (m mySqlModel) FindById(id int) (any, error) {
 
 	selectStr, columnRefLength := m.makeMySqlSelectWhere(pk)
 
-	fmt.Printf("\n\n%s\n\n", selectStr)
-
+	fmt.Printf("selectStr: %v\n", selectStr)	
+	
 	stmt, err := m.DB.Prepare(selectStr)
 	if err != nil {
 		return nil, err
@@ -171,6 +171,7 @@ func (m mySqlModel) FindBy(params map[string]any) (resultSet []any, err error) {
 	values := maps.Values(params)
 
 	selectStr, columnRefLength := m.makeMySqlSelectWhere(keys...)
+
 	stmt, err := m.DB.Prepare(selectStr)
 	if err != nil {
 		return nil, err

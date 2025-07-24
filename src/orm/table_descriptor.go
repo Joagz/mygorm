@@ -4,6 +4,14 @@ import (
 	"fmt"
 )
 
+// todo: modify reference in model
+type reference struct {
+	RefTable string 	// name of the referenced table
+	RefColumns []string	// columns of the referenced table 
+	LocalColumn string	// name of the column in the current table referencing ForeignColumn
+	ForeignColumn string 	// name of the column referenced y LocalColumn
+}
+
 type model struct {
 	config      datasourceConfig
 	Table       string

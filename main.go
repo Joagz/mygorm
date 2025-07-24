@@ -41,13 +41,18 @@ func main() {
 		fmt.Printf("error creating model: %s\n", err.Error())
 		return
 	}
+
+	model.Print()
+
 	r, err := model.FindById(100)
 	if err != nil {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
 	}
 
-	result, err := model.FindAll()
+	result, err := model.FindBy(map[string]any{
+		"other_id": 10,
+	})
 
 	if err != nil {
 		fmt.Printf("ERROR : %s\n", err.Error())

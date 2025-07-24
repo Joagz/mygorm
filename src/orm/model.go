@@ -14,6 +14,7 @@ const (
 	ForeignKeyPropertyName = "foreign-key"
 )
 
+
 type Model interface {
 	/*
 	 * SQL Crud Methods
