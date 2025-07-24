@@ -47,14 +47,13 @@ func (m mySqlModel) makeMySqlSelect() (result string, columnRefLength int) {
 	joins := ""
 
 	if len(m.References) > 0 {
-		keys := maps.Keys(m.References)
-		for i,k := range keys {
-			ref := m.References[k]
-			columnRefLength += len(ref)
-			cols += "," + arrayToCommaSeparatedTable(ref, k)
-			joins += fmt.Sprintf("JOIN %s ON %s = %s ", k, m.ForeignKeys[i], fmt.Sprintf("%s.%s", k, ref[0]))
+		for _,v := range m.References {
+			columnRefLength += len(v.RefColumns)
+			joins += fmt.Sprintf("JOIN %s ON %s.%s = %s.%s ", v.RefTable, v.RefTable, v.ForeignColumn, m.Table, v.LocalColumn)
+			cols += "," + arrayToCommaSeparatedTable(v.RefColumns, v.RefTable)
 		}
 	}
+	
 	result = fmt.Sprintf("SELECT %s FROM %s %s", cols, m.Table, joins)
 	return result, columnRefLength
 }

@@ -6,10 +6,10 @@ import (
 
 // todo: modify reference in model
 type reference struct {
-	RefTable string 	// name of the referenced table
-	RefColumns []string	// columns of the referenced table 
-	LocalColumn string	// name of the column in the current table referencing ForeignColumn
-	ForeignColumn string 	// name of the column referenced y LocalColumn
+	RefTable      string   // name of the referenced table
+	RefColumns    []string // columns of the referenced table
+	LocalColumn   string   // name of the column in the current table referencing ForeignColumn
+	ForeignColumn string   // name of the column referenced by LocalColumn
 }
 
 type model struct {
@@ -17,31 +17,30 @@ type model struct {
 	Table       string
 	Columns     []string
 	PrimaryKey  string
-	ForeignKeys []string
-	References  map[string][]string
+	References  []reference
 }
 
 func (m model) GetColumns() []string {
 	return m.Columns
 }
 
+func (m model) GetPrimary() string {
+	return m.PrimaryKey
+}	
+
 // This function is horrible and beautiful at the same time
 func (m model) Print() {
 	fmt.Printf("name: %s\n", m.Table)
 	fmt.Printf("pk: %s\n", m.PrimaryKey)
 	for i, s := range m.Columns {
-		fmt.Printf("col [%d]: %s ",i, s)
-	}
-	for _, s := range m.ForeignKeys {
-		fmt.Printf("fk: %s ", s)
+		fmt.Printf("col [%d]: %s ", i, s)
 	}
 	fmt.Println("\nreferences:")
-	for k, v := range m.References {	
-		fmt.Printf("\ttable: %s\n\t",k)
-		for i, s := range v {
-			fmt.Printf("col [%d]: %s ",i, s)
+	for _, v := range m.References {
+		fmt.Printf("\ttable: %s\n\t", v)
+		for i, s := range v.RefColumns {
+			fmt.Printf("col [%d]: %s ", i, s)
 		}
 		fmt.Println("")
 	}
 }
-

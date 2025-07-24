@@ -35,7 +35,6 @@ func TableModel(conn orm.Connector) (orm.Model, error) {
 
 func main() {
 	conn := Init()
-
 	model, err := TableModel(conn)
 	if err != nil {
 		fmt.Printf("error creating model: %s\n", err.Error())
@@ -58,6 +57,8 @@ func main() {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
 	}
+
+	fmt.Println("REQUESTS DONE!")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 

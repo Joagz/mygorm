@@ -32,6 +32,7 @@ type Model interface {
 	 */
 	Print()
 	GetColumns() []string
+	GetPrimary() string
 }
 // We have to inject some configuration here
 func (c connector) ModelOf(d any, tablename string) (Model, error) {
@@ -77,16 +78,23 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 				if ref == "" {
 					return nil, fmt.Errorf("please set `ref` for column %s", col)
 				}
-				m.ForeignKeys = append(m.ForeignKeys, col)
+
 				foreign := field.Type
 				fmodel, err := c.ModelOf(foreign, ref)
+
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("could not get model for %s", ref)
 				}
-				if m.References == nil {
-					m.References = make(map[string][]string)
+
+				r := reference {
+					RefTable: ref,
+					RefColumns: fmodel.GetColumns(),
+					LocalColumn: col,
+					ForeignColumn: fmodel.GetPrimary(),
 				}
-				m.References[ref] = fmodel.GetColumns()
+
+				m.References = append(m.References, r)
+
 				hasFk = true
 			}
 		}
