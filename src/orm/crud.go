@@ -36,7 +36,6 @@ func (m mySqlModel) FindAll() (resultSet []any, err error) {
 	joins := ""
 	columnRefLength := 0
 
-
 	if len(m.References) > 0 {
 		keys := maps.Keys(m.References)
 		i := 0
@@ -48,11 +47,7 @@ func (m mySqlModel) FindAll() (resultSet []any, err error) {
 			i++
 		}
 	}
-
-	fmt.Printf("columnRefLength: %d\n", columnRefLength)
 	selectStr := fmt.Sprintf("SELECT %s FROM %s %s %s", cols, m.Table, joins, "")
-	
-	fmt.Println(selectStr)
 
 	stmt, err := m.DB.Prepare(selectStr)	
 	if err != nil {
@@ -87,8 +82,39 @@ func (m mySqlModel) FindAll() (resultSet []any, err error) {
 	return resultSet, nil
 }
 
-func (mySqlModel) FindById(id int) (result any, err error) {
-	panic("mySqlModel: function not implemented")
+func (m mySqlModel) FindById(id int) (any, error) {
+	err := m.Open()	
+	if err != nil {
+		return nil, err 
+	}
+	defer m.Close()
+
+	pk := m.PrimaryKey
+	cols := arrayToCommaSeparatedTable(m.Columns, m.Table)
+	selectStr := fmt.Sprintf("SELECT %s FROM %s WHERE %s = ?", cols, m.Table, pk)
+
+	stmt, err := m.DB.Prepare(selectStr)	
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRow(id)
+	if err := row.Err(); err != nil {
+		return nil, err 
+	}
+
+	length := len(m.Columns)
+	buffer := make([]any, length)
+	dest := make([]any, length)
+
+	for i := range dest {
+		dest[i] = &buffer[i]	
+	}
+
+	err = row.Scan(dest...) 
+
+	return buffer, err
 }
 
 func (mySqlModel) FindBy(params ...any) (resultSet []any, err error) {

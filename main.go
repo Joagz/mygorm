@@ -41,8 +41,9 @@ func main() {
 		fmt.Printf("error creating model: %s\n", err.Error())
 		return 
 	}
-	
+	r, err := model.FindById(100)
 	result, err := model.FindAll()
+
 	if err != nil {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
@@ -69,4 +70,19 @@ func main() {
 	}
 
 	w.Flush()
+
+	fmt.Fprintln(w, "ID\tCol_1\tCol_2\tOther_ID\tOther_Col_1\tOther_Col_2\tExtra_ID\tExtra_Col_1")
+	if arr, ok := r.([]any); ok {
+		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n",
+		arr[0],
+		arr[1],
+		arr[2],
+		arr[3],
+		arr[4],
+		arr[5],
+		arr[6],
+		arr[7],
+	)
+}
+
 }
