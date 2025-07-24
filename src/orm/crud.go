@@ -1,20 +1,36 @@
 package orm
 
 import (
+	"database/sql"
 	"fmt"
-	"maps"
+
+	"golang.org/x/exp/maps"
 )
 
 /*
 * We implement these for different drivers
  */
-func (model) FindAll() (resultSet []any, err error) 		{ panic("please select a sql engine") }
-func (model) FindById(id int) (result any, err error)           { panic("please select a sql engine") }
-func (model) FindBy(params ...any) (resultSet []any, err error) { panic("please select a sql engine") }
-func (model) NumRows() (n int)                                  { panic("please select a sql engine") }
-func (model) Insert(data any) error                             { panic("please select a sql engine") }
-func (model) UpdateById(data any, id int) error                 { panic("please select a sql engine") }
-func (model) UpdateBy(data any, params ...any) error            { panic("please select a sql engine") }
+func (model) FindAll() (resultSet []any, err error) {
+	panic("please select a sql engine")
+}
+func (model) FindById(id int) (result any, err error) {
+	panic("please select a sql engine")
+}
+func (model) FindBy(map[string]any) (resultSet []any, err error) {
+	panic("please select a sql engine")
+}
+func (model) NumRows() (n int) {
+	panic("please select a sql engine")
+}
+func (model) Insert(data any) error {
+	panic("please select a sql engine")
+}
+func (model) UpdateById(data any, id int) error {
+	panic("please select a sql engine")
+}
+func (model) UpdateBy(data any, params ...any) error {
+	panic("please select a sql engine")
+}
 
 /*
  * MySQL Model Drivers
@@ -22,45 +38,42 @@ func (model) UpdateBy(data any, params ...any) error            { panic("please 
 
 type mySqlModel struct {
 	model
-	mySqlConnector	
+	mySqlConnector
 }
 
-func (m mySqlModel) FindAll() (resultSet []any, err error) {
-	err = m.Open()	
-	if err != nil {
-		return nil, err 
-	}
-	defer m.Close()
+func (m mySqlModel) makeMySqlSelect() (result string, columnRefLength int) {
 
 	cols := arrayToCommaSeparatedTable(m.Columns, m.Table)
 	joins := ""
-	columnRefLength := 0
 
 	if len(m.References) > 0 {
 		keys := maps.Keys(m.References)
-		i := 0
 		for k := range keys {
-			ref := m.References[k]
-			columnRefLength+=len(ref)
-			cols += "," + arrayToCommaSeparatedTable(ref, k)
-			joins += fmt.Sprintf("JOIN %s ON %s = %s ", k, m.ForeignKeys[i], fmt.Sprintf("%s.%s", k, ref[0]))
-			i++
+			ref := m.References[keys[k]]
+			columnRefLength += len(ref)
+			cols += "," + arrayToCommaSeparatedTable(ref, keys[k])
+			joins += fmt.Sprintf("JOIN %s ON %s = %s ", keys[k], m.ForeignKeys[k], fmt.Sprintf("%s.%s", keys[k], ref[0]))
 		}
 	}
-	selectStr := fmt.Sprintf("SELECT %s FROM %s %s %s", cols, m.Table, joins, "")
+	result = fmt.Sprintf("SELECT %s FROM %s %s", cols, m.Table, joins)
+	return result, columnRefLength
+}
 
-	stmt, err := m.DB.Prepare(selectStr)	
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
+func (m mySqlModel) makeMySqlSelectWhere(conditions ...string) (result string, columnRefLength int) {
 
-	rows, err := stmt.Query()
-	if err != nil {
-		return nil, err
-	}
+	selectStr, columnRefLength := m.makeMySqlSelect()
+	selectStr = fmt.Sprintf("%s WHERE ", selectStr)
+	
+	for i, v := range conditions {
+		if i > 0 {
+			selectStr += "AND "
+		}
+		selectStr += fmt.Sprintf("%s = ? ", m.Table + "." + v)
+	}	
+	return selectStr, columnRefLength
+}
 
-	readLength := len(m.Columns) + columnRefLength
+func storeMySqlResultSet(resultSetPtr *[]any, rows *sql.Rows, readLength int) {
 	for rows.Next() {
 		/*
 		 * We use dest to store pointers to each rawResult entry
@@ -76,24 +89,52 @@ func (m mySqlModel) FindAll() (resultSet []any, err error) {
 			fmt.Printf("error writing to buffer on FindAll: '%s'\n", err.Error())
 			continue
 		}
-		
-		resultSet = append(resultSet, rawResult)
+
+		*resultSetPtr = append(*resultSetPtr, rawResult)
 	}
+}
+
+func (m mySqlModel) FindAll() (resultSet []any, err error) {
+	err = m.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer m.Close()
+
+	selectStr, columnRefLength := m.makeMySqlSelect()
+	
+	stmt, err := m.DB.Prepare(selectStr)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+
+	readLength := len(m.Columns) + columnRefLength
+	
+	storeMySqlResultSet(&resultSet, rows, readLength)
+	
 	return resultSet, nil
 }
 
 func (m mySqlModel) FindById(id int) (any, error) {
-	err := m.Open()	
+	err := m.Open()
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 	defer m.Close()
 
 	pk := m.PrimaryKey
-	cols := arrayToCommaSeparatedTable(m.Columns, m.Table)
-	selectStr := fmt.Sprintf("SELECT %s FROM %s WHERE %s = ?", cols, m.Table, pk)
 
-	stmt, err := m.DB.Prepare(selectStr)	
+	selectStr, columnRefLength := m.makeMySqlSelectWhere(pk)
+
+	fmt.Printf("\n\n%s\n\n", selectStr)
+
+	stmt, err := m.DB.Prepare(selectStr)
 	if err != nil {
 		return nil, err
 	}
@@ -101,24 +142,51 @@ func (m mySqlModel) FindById(id int) (any, error) {
 
 	row := stmt.QueryRow(id)
 	if err := row.Err(); err != nil {
-		return nil, err 
+		return nil, err
 	}
 
-	length := len(m.Columns)
-	buffer := make([]any, length)
-	dest := make([]any, length)
+	readLength := len(m.Columns) + columnRefLength
+	result := make([]any, readLength)
+	dest := make([]any, readLength)
 
 	for i := range dest {
-		dest[i] = &buffer[i]	
+		dest[i] = &result[i]
 	}
 
-	err = row.Scan(dest...) 
+	if err := row.Scan(dest...); err != nil {
+		return nil, err
+	}
 
-	return buffer, err
+	return result, err
 }
 
-func (mySqlModel) FindBy(params ...any) (resultSet []any, err error) {
-	panic("mySqlModel: function not implemented")
+func (m mySqlModel) FindBy(params map[string]any) (resultSet []any, err error) {
+	err = m.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer m.Close()
+
+	keys := maps.Keys(params)
+	values := maps.Values(params)
+
+	selectStr, columnRefLength := m.makeMySqlSelectWhere(keys...)
+	stmt, err := m.DB.Prepare(selectStr)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(values...)
+	if err != nil {
+		return nil, err
+	}
+
+	readLength := len(m.Columns) + columnRefLength
+
+	storeMySqlResultSet(&resultSet, rows, readLength)
+
+	return resultSet, nil
 }
 
 func (mySqlModel) NumRows() (n int) {
@@ -136,6 +204,3 @@ func (mySqlModel) UpdateById(data any, id int) error {
 func (mySqlModel) UpdateBy(data any, params ...any) error {
 	panic("mySqlModel: function not implemented")
 }
-
-
-

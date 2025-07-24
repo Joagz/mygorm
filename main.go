@@ -15,13 +15,13 @@ type Table struct {
 	Extra   ExtraTable `col:"extra_id" props:"foreign-key" ref:"extra"`
 }
 type ExtraTable struct {
-	ID      int        `col:"id" props:"primary-key"`
-	Column1 string     `col:"extra_col_1"`
+	ID      int    `col:"id" props:"primary-key"`
+	Column1 string `col:"extra_col_1"`
 }
 type OtherTable struct {
-	Column1 string     `col:"other_col_1"`
-	Column2 string     `col:"other_col_2"`
-	ID      int        `col:"id" props:"primary-key"`
+	Column1 string `col:"other_col_1"`
+	Column2 string `col:"other_col_2"`
+	ID      int    `col:"id" props:"primary-key"`
 }
 
 func Init() orm.Connector {
@@ -35,13 +35,18 @@ func TableModel(conn orm.Connector) (orm.Model, error) {
 
 func main() {
 	conn := Init()
-		
-	model, err :=  TableModel(conn)
+
+	model, err := TableModel(conn)
 	if err != nil {
 		fmt.Printf("error creating model: %s\n", err.Error())
-		return 
+		return
 	}
 	r, err := model.FindById(100)
+	if err != nil {
+		fmt.Printf("ERROR : %s\n", err.Error())
+		return
+	}
+
 	result, err := model.FindAll()
 
 	if err != nil {
@@ -74,15 +79,16 @@ func main() {
 	fmt.Fprintln(w, "ID\tCol_1\tCol_2\tOther_ID\tOther_Col_1\tOther_Col_2\tExtra_ID\tExtra_Col_1")
 	if arr, ok := r.([]any); ok {
 		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n",
-		arr[0],
-		arr[1],
-		arr[2],
-		arr[3],
-		arr[4],
-		arr[5],
-		arr[6],
-		arr[7],
-	)
-}
-
+			arr[0],
+			arr[1],
+			arr[2],
+			arr[3],
+			arr[4],
+			arr[5],
+			arr[6],
+			arr[7],
+		)
+	}
+	
+	w.Flush()
 }

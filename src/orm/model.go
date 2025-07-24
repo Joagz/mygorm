@@ -20,7 +20,7 @@ type Model interface {
 	 */
 	FindAll() ([]any, error)
 	FindById(int) (any, error)
-	FindBy(...any) ([]any, error)
+	FindBy(map[string]any) ([]any, error)
 	NumRows() int
 	Insert(any) error
 	UpdateById(any, int) error
