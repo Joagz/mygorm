@@ -64,36 +64,31 @@ func main() {
 	fmt.Fprintln(w, "Row\tID\tCol_1\tCol_2\tOther_ID\tOther_Col_1\tOther_Col_2\tExtra_ID\tExtra_Col_1")
 
 	for i, v := range result {
-		if arr, ok := v.([]any); ok {
-			fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n",
-				i,
-				arr[0],
-				arr[1],
-				arr[2],
-				arr[3],
-				arr[4],
-				arr[5],
-				arr[6],
-				arr[7],
-			)
-		}
+		fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n",
+			i,
+			v[0],
+			v[1],
+			v[2],
+			v[3],
+			v[4],
+			v[5],
+			v[6],
+			v[7],
+		)
 	}
 
 	w.Flush()
 
 	fmt.Fprintln(w, "ID\tCol_1\tCol_2\tOther_ID\tOther_Col_1\tOther_Col_2\tExtra_ID\tExtra_Col_1")
-	if arr, ok := r.([]any); ok {
-		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n",
-			arr[0],
-			arr[1],
-			arr[2],
-			arr[3],
-			arr[4],
-			arr[5],
-			arr[6],
-			arr[7],
-		)
-	}
-	
+	fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n",
+		r[0],
+		r[1],
+		r[2],
+		r[3],
+		r[4],
+		r[5],
+		r[6],
+		r[7],
+	)
 	w.Flush()
 }

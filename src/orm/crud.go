@@ -73,7 +73,22 @@ func (m mySqlModel) makeMySqlSelectWhere(conditions ...string) (result string, c
 	return selectStr, columnRefLength
 }
 
-func storeMySqlResultSet(resultSetPtr *[]any, rows *sql.Rows, readLength int) {
+func storeMySqlResult(row *sql.Row, readLength int) ([]any, error) {
+	result := make([]any, readLength)
+	dest := make([]any, readLength)
+
+	for i := range dest {
+		dest[i] = &result[i]
+	}
+
+	if err := row.Scan(dest...); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func storeMySqlResultSet(resultSetPtr *[][]any, rows *sql.Rows, readLength int) {
 	for rows.Next() {
 		/*
 		 * We use dest to store pointers to each rawResult entry
@@ -94,7 +109,7 @@ func storeMySqlResultSet(resultSetPtr *[]any, rows *sql.Rows, readLength int) {
 	}
 }
 
-func (m mySqlModel) FindAll() (resultSet []any, err error) {
+func (m mySqlModel) FindAll() (resultSet [][]any, err error) {
 	err = m.Open()
 	if err != nil {
 		return nil, err
@@ -121,8 +136,8 @@ func (m mySqlModel) FindAll() (resultSet []any, err error) {
 	return resultSet, nil
 }
 
-func (m mySqlModel) FindById(id int) (any, error) {
-	err := m.Open()
+func (m mySqlModel) FindById(id int) (result []any, err error) {
+	err = m.Open()
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +146,6 @@ func (m mySqlModel) FindById(id int) (any, error) {
 	pk := m.PrimaryKey
 
 	selectStr, columnRefLength := m.makeMySqlSelectWhere(pk)
-
-	fmt.Printf("selectStr: %v\n", selectStr)	
 	
 	stmt, err := m.DB.Prepare(selectStr)
 	if err != nil {
@@ -144,23 +157,18 @@ func (m mySqlModel) FindById(id int) (any, error) {
 	if err := row.Err(); err != nil {
 		return nil, err
 	}
-
+	
 	readLength := len(m.Columns) + columnRefLength
-	result := make([]any, readLength)
-	dest := make([]any, readLength)
-
-	for i := range dest {
-		dest[i] = &result[i]
-	}
-
-	if err := row.Scan(dest...); err != nil {
+	result, err = storeMySqlResult(row, readLength)
+	
+	if err != nil {
 		return nil, err
 	}
 
-	return result, err
+	return result, nil
 }
 
-func (m mySqlModel) FindBy(params map[string]any) (resultSet []any, err error) {
+func (m mySqlModel) FindBy(params map[string]any) (resultSet [][]any, err error) {
 	err = m.Open()
 	if err != nil {
 		return nil, err

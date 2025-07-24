@@ -19,9 +19,9 @@ type Model interface {
 	/*
 	 * SQL Crud Methods
 	 */
-	FindAll() ([]any, error)
-	FindById(int) (any, error)
-	FindBy(map[string]any) ([]any, error)
+	FindAll() ([][]any, error)
+	FindById(int) ([]any, error)
+	FindBy(map[string]any) ([][]any, error)
 	NumRows() int
 	Insert(any) error
 	UpdateById(any, int) error
