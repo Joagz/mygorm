@@ -17,7 +17,7 @@ type model struct {
 	Table       string
 	Columns     []string
 	PrimaryKey  string
-	References  []reference
+	References  map[string]reference
 }
 
 func (m model) GetColumns() []string {

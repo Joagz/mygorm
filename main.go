@@ -14,36 +14,39 @@ type Table struct {
 	Other   OtherTable `col:"other_id" props:"foreign-key" ref:"other"`
 	Extra   ExtraTable `col:"extra_id" props:"foreign-key" ref:"extra"`
 }
+
 type ExtraTable struct {
 	ID      int    `col:"id" props:"primary-key"`
 	Column1 string `col:"extra_col_1"`
 }
 type OtherTable struct {
+	ID      int    `col:"id" props:"primary-key"`
 	Column1 string `col:"other_col_1"`
 	Column2 string `col:"other_col_2"`
-	ID      int    `col:"id" props:"primary-key"`
 }
 
-func Init() orm.Connector {
-	conn := orm.NewConnector("mysql", "root", "123456", "db_name", "localhost:3307")
-	return conn
-}
+/*
+ *	Create a Connector
+ */
+var conn = orm.NewConnector("mysql", "root", "123456", "db_name", "localhost:3307")
 
-func TableModel(conn orm.Connector) (orm.Model, error) {
-	return conn.ModelOf(Table{}, "test")
-}
+/*
+ *	Create a Model
+ */
+var model = func() orm.Model {
+	m, err := conn.ModelOf(Table{}, "test")
 
-func main() {
-	conn := Init()
-	model, err := TableModel(conn)
 	if err != nil {
-		fmt.Printf("error creating model: %s\n", err.Error())
-		return
+		panic(fmt.Sprintf("error creating model: %s\n", err.Error()))
 	}
 
+	return m
+}()
+
+func main() {
 	model.Print()
 
-	r, err := model.FindById(100)
+	r, err := model.FindById(200)
 	if err != nil {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
@@ -57,8 +60,6 @@ func main() {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
 	}
-
-	fmt.Println("REQUESTS DONE!")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
@@ -92,4 +93,21 @@ func main() {
 		r[7],
 	)
 	w.Flush()
+
+	err = model.Insert(Table{
+		ID:      1,
+		Column1: "ABC",
+		Column2: "DEF",
+		Other: OtherTable{
+			ID: 1,
+		},
+		Extra: ExtraTable{
+			ID: 2,
+		},
+	})
+
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+	}
+
 }

@@ -3,6 +3,8 @@ package orm
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
+	"strconv"
 
 	"golang.org/x/exp/maps"
 )
@@ -47,13 +49,13 @@ func (m mySqlModel) makeMySqlSelect() (result string, columnRefLength int) {
 	joins := ""
 
 	if len(m.References) > 0 {
-		for _,v := range m.References {
+		for _, v := range m.References {
 			columnRefLength += len(v.RefColumns)
 			joins += fmt.Sprintf("JOIN %s ON %s.%s = %s.%s ", v.RefTable, v.RefTable, v.ForeignColumn, m.Table, v.LocalColumn)
 			cols += "," + arrayToCommaSeparatedTable(v.RefColumns, v.RefTable)
 		}
 	}
-	
+
 	result = fmt.Sprintf("SELECT %s FROM %s %s", cols, m.Table, joins)
 	return result, columnRefLength
 }
@@ -62,13 +64,13 @@ func (m mySqlModel) makeMySqlSelectWhere(conditions ...string) (result string, c
 
 	selectStr, columnRefLength := m.makeMySqlSelect()
 	selectStr = fmt.Sprintf("%s WHERE ", selectStr)
-	
+
 	for i, v := range conditions {
 		if i > 0 {
 			selectStr += "AND "
 		}
-		selectStr += fmt.Sprintf("%s = ? ", m.Table + "." + v)
-	}	
+		selectStr += fmt.Sprintf("%s = ? ", m.Table+"."+v)
+	}
 	return selectStr, columnRefLength
 }
 
@@ -116,7 +118,7 @@ func (m mySqlModel) FindAll() (resultSet [][]any, err error) {
 	defer m.Close()
 
 	selectStr, columnRefLength := m.makeMySqlSelect()
-	
+
 	stmt, err := m.DB.Prepare(selectStr)
 	if err != nil {
 		return nil, err
@@ -129,9 +131,9 @@ func (m mySqlModel) FindAll() (resultSet [][]any, err error) {
 	}
 
 	readLength := len(m.Columns) + columnRefLength
-	
+
 	storeMySqlResultSet(&resultSet, rows, readLength)
-	
+
 	return resultSet, nil
 }
 
@@ -145,7 +147,7 @@ func (m mySqlModel) FindById(id int) (result []any, err error) {
 	pk := m.PrimaryKey
 
 	selectStr, columnRefLength := m.makeMySqlSelectWhere(pk)
-	
+
 	stmt, err := m.DB.Prepare(selectStr)
 	if err != nil {
 		return nil, err
@@ -156,10 +158,10 @@ func (m mySqlModel) FindById(id int) (result []any, err error) {
 	if err := row.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	readLength := len(m.Columns) + columnRefLength
 	result, err = storeMySqlResult(row, readLength)
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -201,8 +203,88 @@ func (mySqlModel) NumRows() (n int) {
 	panic("mySqlModel: function not implemented")
 }
 
-func (mySqlModel) Insert(data any) error {
-	panic("mySqlModel: function not implemented")
+func appendMySqlInsertValues(field reflect.StructField, value reflect.Value, m mySqlModel) (string, error) {
+	switch value.Kind() {
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return strconv.FormatInt(value.Int(), 10), nil
+	case reflect.Float32:
+		return strconv.FormatFloat(value.Float(), 'f', -1, 64), nil
+	case reflect.Float64:
+		return strconv.FormatFloat(value.Float(), 'f', -1, 32), nil
+	case reflect.String:
+		return fmt.Sprintf("`%s`", value.String()), nil
+	case reflect.Bool:
+		val := value.Bool()
+
+		if val {
+			return "TRUE", nil
+		} else {
+			return "FALSE", nil
+		}
+
+	default:
+		ref := field.Tag.Get(ReferenceKeyPropertyName)
+		found := false
+		if ref != "" {
+			ftype := value.Type()
+			r := m.References[ref]
+
+			for j := 0; j < value.NumField(); j++ {
+				field := ftype.Field(j)
+				if tag := field.Tag.Get(ColumnKeyPropertyName); tag == r.ForeignColumn {
+					found = true
+					return appendMySqlInsertValues(field, value.Field(j), m)
+				}
+			}
+		}
+
+		if !found {
+			return "", fmt.Errorf("could not append values: invalid data type")
+		}
+	}
+
+	return "", nil
+}
+
+func (m mySqlModel) Insert(data any) error {
+
+	t := reflect.TypeOf(data)
+	v := reflect.ValueOf(data)
+	cols := m.Columns
+	format := "INSERT INTO %s (%s) VALUES (%s)"
+
+	valuesStr := ""
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i)
+
+		if col := field.Tag.Get(ColumnKeyPropertyName); col != "" {
+			str, err := appendMySqlInsertValues(field, value, m)
+
+			if ref := field.Tag.Get(ReferenceKeyPropertyName); ref != "" {
+				r := m.References[ref]
+				cols = append(cols, r.LocalColumn)
+			}
+
+			if err != nil {
+				return err
+			}
+
+			valuesStr += str
+
+			// skip last item
+			if i < t.NumField()-1 {
+				valuesStr += ","
+			}
+		}
+	}
+
+	insertStr := fmt.Sprintf(format, m.Table, arrayToCommaSeparatedTable(cols, m.Table), valuesStr)
+
+	fmt.Printf("insertStr: %v\n", insertStr)
+
+	return nil
 }
 
 func (mySqlModel) UpdateById(data any, id int) error {

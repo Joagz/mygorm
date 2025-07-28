@@ -9,9 +9,12 @@ import (
 )
 
 const (
-	CommaSeparatedRegex    = `^(\s*[\w\s-]+\s*)(,\s*[\w\s-]+\s*)*$`
-	PrimaryKeyPropertyName = "primary-key"
-	ForeignKeyPropertyName = "foreign-key"
+	CommaSeparatedRegex      = `^(\s*[\w\s-]+\s*)(,\s*[\w\s-]+\s*)*$`
+	PrimaryKeyPropertyName   = "primary-key"
+	ForeignKeyPropertyName   = "foreign-key"
+	ReferenceKeyPropertyName = "ref"
+	ColumnKeyPropertyName    = "col"
+	PropertyListName         = "props"
 )
 
 
@@ -58,7 +61,7 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 		hasPk := false
 		hasFk := false 
 
-		if props := field.Tag.Get("props"); props != "" {
+		if props := field.Tag.Get(PropertyListName); props != "" {
 			ok := expr.MatchString(props)
 			if !ok {
 				return nil, fmt.Errorf("regular expression checking failed for %s", props)
@@ -86,6 +89,10 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 					return nil, fmt.Errorf("could not get model for %s", ref)
 				}
 
+				if m.References == nil {
+					m.References = make(map[string]reference)
+				}
+
 				r := reference {
 					RefTable: ref,
 					RefColumns: fmodel.GetColumns(),
@@ -93,7 +100,7 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 					ForeignColumn: fmodel.GetPrimary(),
 				}
 
-				m.References = append(m.References, r)
+				m.References[ref] = r
 
 				hasFk = true
 			}
