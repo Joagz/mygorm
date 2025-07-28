@@ -8,7 +8,7 @@ import (
 )
 
 type Table struct {
-	ID      int        `col:"id" props:"primary-key"`
+	ID      int        `col:"id" props:"primary-key,auto-increment"`
 	Column1 string     `col:"col_1"`
 	Column2 string     `col:"col_2"`
 	Other   OtherTable `col:"other_id" props:"foreign-key" ref:"other"`
@@ -46,16 +46,16 @@ var model = func() orm.Model {
 func main() {
 	model.Print()
 
-	r, err := model.FindById(200)
+	r, err := model.FindById(1)
 	if err != nil {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
 	}
 
-	result, err := model.FindBy(map[string]any{
-		"other_id": 10,
-	})
-
+	//result, err := model.FindBy(map[string]any{
+	//	"other_id": 10,
+	//})
+	result, err := model.FindAll()
 	if err != nil {
 		fmt.Printf("ERROR : %s\n", err.Error())
 		return
@@ -95,11 +95,10 @@ func main() {
 	w.Flush()
 
 	err = model.Insert(Table{
-		ID:      1,
 		Column1: "ABC",
 		Column2: "DEF",
 		Other: OtherTable{
-			ID: 1,
+			ID: 10,
 		},
 		Extra: ExtraTable{
 			ID: 2,

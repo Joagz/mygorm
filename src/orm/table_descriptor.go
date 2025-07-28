@@ -12,10 +12,17 @@ type reference struct {
 	ForeignColumn string   // name of the column referenced by LocalColumn
 }
 
+
+type column struct {
+	Name string 
+	Properties []string 
+	References string 
+}
+
 type model struct {
 	config      datasourceConfig
 	Table       string
-	Columns     []string
+	Columns     []string 
 	PrimaryKey  string
 	References  map[string]reference
 }

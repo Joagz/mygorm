@@ -1,6 +1,14 @@
 -- Selecciona la base de datos
 USE db_name;
 
+SET FOREIGN_KEY_CHECKS=0;
+
+TRUNCATE TABLE extra;
+TRUNCATE TABLE other;
+TRUNCATE TABLE test;
+
+SET FOREIGN_KEY_CHECKS=1;
+
 -- Crear tabla 'extra'
 CREATE TABLE IF NOT EXISTS extra (
     id INT NOT NULL,
@@ -35,11 +43,11 @@ INSERT INTO extra (id, extra_col_1) VALUES
 
 -- Insertar datos en 'other'
 INSERT INTO other (id, other_col_1, other_col_2) VALUES
-(10, 'Other info A', 'Details A'),
-(20, 'Other info B', 'Details B');
+(1, 'Other info A', 'Details A'),
+(2, 'Other info B', 'Details B');
 
 -- Insertar datos en 'test'
 INSERT INTO test (id, col_1, col_2, other_id, extra_id) VALUES
-(100, 'Test Row 1', 'Some text', 10, 1),
-(200, 'Test Row 2', 'More text', 20, 2);
+(1, 'Test Row 1', 'Some text', 1, 1),
+(2, 'Test Row 2', 'More text', 2, 2);
 

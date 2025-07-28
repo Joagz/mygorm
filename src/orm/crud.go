@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
+	"strings"
 
 	"golang.org/x/exp/maps"
 )
@@ -207,13 +209,21 @@ func appendMySqlInsertValues(field reflect.StructField, value reflect.Value, m m
 	switch value.Kind() {
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+
+		props := field.Tag.Get(PropertyListName)
+		properties := strings.Split(props, ",")
+		if slices.Contains(properties, PrimaryKeyPropertyName) && 
+			slices.Contains(properties, AutoIncrementPropertyName) {
+			return "", nil
+		}
+
 		return strconv.FormatInt(value.Int(), 10), nil
 	case reflect.Float32:
 		return strconv.FormatFloat(value.Float(), 'f', -1, 64), nil
 	case reflect.Float64:
 		return strconv.FormatFloat(value.Float(), 'f', -1, 32), nil
 	case reflect.String:
-		return fmt.Sprintf("`%s`", value.String()), nil
+		return fmt.Sprintf("'%s'", value.String()), nil
 	case reflect.Bool:
 		val := value.Bool()
 
@@ -251,7 +261,7 @@ func (m mySqlModel) Insert(data any) error {
 
 	t := reflect.TypeOf(data)
 	v := reflect.ValueOf(data)
-	cols := m.Columns
+	var cols []string 
 	format := "INSERT INTO %s (%s) VALUES (%s)"
 
 	valuesStr := ""
@@ -260,13 +270,23 @@ func (m mySqlModel) Insert(data any) error {
 		value := v.Field(i)
 
 		if col := field.Tag.Get(ColumnKeyPropertyName); col != "" {
-			str, err := appendMySqlInsertValues(field, value, m)
 
 			if ref := field.Tag.Get(ReferenceKeyPropertyName); ref != "" {
 				r := m.References[ref]
 				cols = append(cols, r.LocalColumn)
+			} else {
+
+				if field.Tag.Get(PrimaryKeyPropertyName) != "" && 
+					field.Tag.Get(AutoIncrementPropertyName) != "" {
+						continue;
+				}
+
+				cols = append(cols, col)
+
 			}
 
+			str, err := appendMySqlInsertValues(field, value, m)
+			
 			if err != nil {
 				return err
 			}
@@ -281,8 +301,22 @@ func (m mySqlModel) Insert(data any) error {
 	}
 
 	insertStr := fmt.Sprintf(format, m.Table, arrayToCommaSeparatedTable(cols, m.Table), valuesStr)
-
 	fmt.Printf("insertStr: %v\n", insertStr)
+
+	err := m.Open()
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	stmt, err := m.DB.Prepare(insertStr)
+	if err != nil {
+		return err 
+	}
+
+	if _,err := stmt.Exec(); err != nil {
+		return err
+	}
 
 	return nil
 }

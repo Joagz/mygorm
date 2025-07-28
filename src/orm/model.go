@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	CommaSeparatedRegex      = `^(\s*[\w\s-]+\s*)(,\s*[\w\s-]+\s*)*$`
-	PrimaryKeyPropertyName   = "primary-key"
-	ForeignKeyPropertyName   = "foreign-key"
-	ReferenceKeyPropertyName = "ref"
-	ColumnKeyPropertyName    = "col"
-	PropertyListName         = "props"
+	CommaSeparatedRegex       = `^(\s*[\w\s-]+\s*)(,\s*[\w\s-]+\s*)*$`
+	PrimaryKeyPropertyName    = "primary-key"
+	AutoIncrementPropertyName = "auto-increment"
+	ForeignKeyPropertyName    = "foreign-key"
+	ReferenceKeyPropertyName  = "ref"
+	ColumnKeyPropertyName     = "col"
+	PropertyListName          = "props"
 )
 
 
@@ -67,7 +68,7 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 				return nil, fmt.Errorf("regular expression checking failed for %s", props)
 			}
 
-			// treat as comma-separated string
+			// treat as comma-separated string, must use a struct for this later 
 			properties := strings.Split(props, ",")
 			if slices.Contains(properties, PrimaryKeyPropertyName) {
 				m.PrimaryKey = col
