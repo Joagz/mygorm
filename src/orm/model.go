@@ -35,7 +35,7 @@ type Model interface {
 	 * Other methods
 	 */
 	Print()
-	GetColumns() []string
+	GetColumns() []column
 	GetPrimary() string
 }
 // We have to inject some configuration here
@@ -54,13 +54,19 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 
 	var m model
 
-	var cols []string
+	var cols []column
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		col := field.Tag.Get("col")
+		colStr := field.Tag.Get("col")
+		if colStr == "" {
+			continue // ignore
+		}
+
+		col :=	column{
+			Name: colStr,
+		}
 
 		hasPk := false
-		hasFk := false 
 
 		if props := field.Tag.Get(PropertyListName); props != "" {
 			ok := expr.MatchString(props)
@@ -69,19 +75,27 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 			}
 
 			// treat as comma-separated string, must use a struct for this later 
-			properties := strings.Split(props, ",")
+			properties := strings.Split(strings.Trim(props, " "), ",")
 			if slices.Contains(properties, PrimaryKeyPropertyName) {
-				m.PrimaryKey = col
+				m.PrimaryKey = colStr 
 				// always append pk first
 				hasPk = true
+				col.IsPrimary = true 
+
+				if slices.Contains(properties, AutoIncrementPropertyName) {
+					col.IsAutoIncrement = true
+				}
 
 			}
 
 			if slices.Contains(properties, ForeignKeyPropertyName) {
 				ref := field.Tag.Get("ref")
 				if ref == "" {
-					return nil, fmt.Errorf("please set `ref` for column %s", col)
+					return nil, fmt.Errorf("please set `ref` for column %v", col)
 				}
+
+				col.References = ref
+				col.IsForeign = true 
 
 				foreign := field.Type
 				fmodel, err := c.ModelOf(foreign, ref)
@@ -97,19 +111,21 @@ func (c connector) ModelOf(d any, tablename string) (Model, error) {
 				r := reference {
 					RefTable: ref,
 					RefColumns: fmodel.GetColumns(),
-					LocalColumn: col,
+					LocalColumn: colStr,
 					ForeignColumn: fmodel.GetPrimary(),
 				}
 
+				col.ReferencedColumn = r.ForeignColumn
+				col.Properties = properties
+
 				m.References[ref] = r
 
-				hasFk = true
 			}
 		}
 
 		if hasPk {
 			m.Columns = append(m.Columns, col)
-		} else if !hasFk {
+		} else {
 			cols = append(cols, col)
 		}
 	}

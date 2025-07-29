@@ -4,10 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
-	"slices"
 	"strconv"
-	"strings"
-
 	"golang.org/x/exp/maps"
 )
 
@@ -47,14 +44,14 @@ type mySqlModel struct {
 
 func (m mySqlModel) makeMySqlSelect() (result string, columnRefLength int) {
 
-	cols := arrayToCommaSeparatedTable(m.Columns, m.Table)
+	cols := columnArrayToCommaSeparatedTable(m.Columns, m.Table)
 	joins := ""
 
 	if len(m.References) > 0 {
 		for _, v := range m.References {
 			columnRefLength += len(v.RefColumns)
 			joins += fmt.Sprintf("JOIN %s ON %s.%s = %s.%s ", v.RefTable, v.RefTable, v.ForeignColumn, m.Table, v.LocalColumn)
-			cols += "," + arrayToCommaSeparatedTable(v.RefColumns, v.RefTable)
+			cols += "," + columnArrayToCommaSeparatedTable(v.RefColumns, v.RefTable)
 		}
 	}
 
@@ -205,15 +202,14 @@ func (mySqlModel) NumRows() (n int) {
 	panic("mySqlModel: function not implemented")
 }
 
-func appendMySqlInsertValues(field reflect.StructField, value reflect.Value, m mySqlModel) (string, error) {
+func appendMySqlInsertValues(col column, value reflect.Value, m mySqlModel, passedForeign bool) (string, error) {
+
 	switch value.Kind() {
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 
-		props := field.Tag.Get(PropertyListName)
-		properties := strings.Split(props, ",")
-		if slices.Contains(properties, PrimaryKeyPropertyName) && 
-			slices.Contains(properties, AutoIncrementPropertyName) {
+		if col.IsPrimary && col.IsAutoIncrement && !passedForeign {
+			fmt.Println("ignore auto-increment primary key")
 			return "", nil
 		}
 
@@ -234,17 +230,15 @@ func appendMySqlInsertValues(field reflect.StructField, value reflect.Value, m m
 		}
 
 	default:
-		ref := field.Tag.Get(ReferenceKeyPropertyName)
 		found := false
-		if ref != "" {
-			ftype := value.Type()
-			r := m.References[ref]
 
-			for j := 0; j < value.NumField(); j++ {
-				field := ftype.Field(j)
-				if tag := field.Tag.Get(ColumnKeyPropertyName); tag == r.ForeignColumn {
+		if col.IsForeign {
+			r := m.References[col.References]
+			for j:=0; j < value.NumField(); j++ {
+				rcol := r.RefColumns[j]
+				if rcol.Name == col.ReferencedColumn {
 					found = true
-					return appendMySqlInsertValues(field, value.Field(j), m)
+					return appendMySqlInsertValues(rcol, value.Field(j), m, true)
 				}
 			}
 		}
@@ -259,50 +253,36 @@ func appendMySqlInsertValues(field reflect.StructField, value reflect.Value, m m
 
 func (m mySqlModel) Insert(data any) error {
 
-	t := reflect.TypeOf(data)
 	v := reflect.ValueOf(data)
 	var cols []string 
 	format := "INSERT INTO %s (%s) VALUES (%s)"
 
 	valuesStr := ""
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
+	for i := 0; i < len(m.Columns); i++ {
 		value := v.Field(i)
+		col := m.Columns[i]
 
-		if col := field.Tag.Get(ColumnKeyPropertyName); col != "" {
+		str, err := appendMySqlInsertValues(col, value, m, false)
 
-			if ref := field.Tag.Get(ReferenceKeyPropertyName); ref != "" {
-				r := m.References[ref]
-				cols = append(cols, r.LocalColumn)
-			} else {
-
-				props := strings.Split(strings.Trim(field.Tag.Get(PropertyListName), " "), ",")
-				
-				if len(props) > 0 {
-					if slices.Contains(props, PrimaryKeyPropertyName) &&
-						slices.Contains(props, AutoIncrementPropertyName) {
-						fmt.Printf("skip pk\n")
-						continue
-					}
-				}
-
-				cols = append(cols, col)
-
-			}
-
-			str, err := appendMySqlInsertValues(field, value, m)
-			
-			if err != nil {
-				return err
-			}
-
-			valuesStr += str
-
-			// skip last item
-			if i < t.NumField()-1 {
-				valuesStr += ","
-			}
+		if str == "" {
+			continue
 		}
+
+		if err != nil {
+			return err
+		}
+
+		valuesStr += str
+
+		if col.IsAutoIncrement && col.IsPrimary {
+			continue
+		}
+		
+		if i < len(m.Columns)-1 {
+			valuesStr += ","
+		}
+		cols = append(cols, col.Name)
+
 	}
 
 	insertStr := fmt.Sprintf(format, m.Table, arrayToCommaSeparatedTable(cols, m.Table), valuesStr)
