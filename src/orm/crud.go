@@ -276,9 +276,14 @@ func (m mySqlModel) Insert(data any) error {
 				cols = append(cols, r.LocalColumn)
 			} else {
 
-				if field.Tag.Get(PrimaryKeyPropertyName) != "" && 
-					field.Tag.Get(AutoIncrementPropertyName) != "" {
-						continue;
+				props := strings.Split(strings.Trim(field.Tag.Get(PropertyListName), " "), ",")
+				
+				if len(props) > 0 {
+					if slices.Contains(props, PrimaryKeyPropertyName) &&
+						slices.Contains(props, AutoIncrementPropertyName) {
+						fmt.Printf("skip pk\n")
+						continue
+					}
 				}
 
 				cols = append(cols, col)
